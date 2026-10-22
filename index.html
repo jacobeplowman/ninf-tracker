@@ -50,7 +50,8 @@ aside { border-right: 1px solid var(--line); background: var(--panel); padding: 
 aside input, aside select { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
 #flist { overflow: auto; flex: 1; border: 1px solid var(--line); border-radius: 6px; }
 #flist div { padding: 5px 9px; cursor: pointer; display: flex; justify-content: space-between; gap: 6px; border-bottom: 1px solid var(--soft); }
-#flist div:hover { background: var(--soft); } #flist div.on { background: var(--accent); color: #fff; }
+#flist div:hover { background: var(--soft); }
+#flist p.grp { margin: 0; padding: 6px 9px 3px; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--soft); position: sticky; top: 0; } #flist div.on { background: var(--accent); color: #fff; }
 #flist div.on .muted { color: #e9eefc; }
 main { padding: 16px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
@@ -117,6 +118,13 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
     <aside>
       <input id="q" type="search" placeholder="Search formula (e.g. TiO2)" list="fdl" autocomplete="off">
       <datalist id="fdl"></datalist>
+      <select id="fanion"><option value="">All anion classes</option></select>
+      <select id="fsort">
+        <option value="az">Sort: formula A–Z</option>
+        <option value="anion">Sort: grouped by anion class</option>
+        <option value="nhi">Sort: n∞ high → low</option>
+        <option value="nlo">Sort: n∞ low → high</option>
+      </select>
       <select id="fsrc">
         <option value="">All sources used</option>
         <option value="our fits">Our fits</option>
@@ -143,7 +151,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 </div>
 
 <script>
-const META = {"salt": "i6qGn/pOcUW985Gad7/4YA==", "iter": 310000};
+const META = {"salt": "I0MCskH69b64Vmyc+qv0MQ==", "iter": 310000};
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const link = (url, text) => /^https?:\/\//.test(url || "") ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text || url)}</a>` : esc(text || "");
@@ -201,9 +209,11 @@ function flags(F) {
   return { multi: fams.size > 1, spread };
 }
 function renderList() {
-  const q = $("q").value.trim().toLowerCase(), src = $("fsrc").value, fl = $("fflag").value;
+  const q = $("q").value.trim().toLowerCase(), src = $("fsrc").value, fl = $("fflag").value, an = $("fanion").value, so = $("fsort").value;
+  const grp = (F) => F.anion + (F.oxo ? " · " + F.oxo : "");
   const rows = DB.formulas.filter((F) => {
     if (q && !F.f.toLowerCase().includes(q)) return false;
+    if (an && grp(F) !== an && F.anion !== an) return false;
     if (src && !F.source.startsWith(src)) return false;
     const g = flags(F);
     if (fl === "untrace" && F.traceable) return false;
@@ -217,13 +227,19 @@ function renderList() {
     if (fl === "removed" && !F.removed) return false;
     return true;
   });
+  const nv = (F) => F.n_inf ?? -1;
+  if (so === "anion") rows.sort((a, b) => grp(a).localeCompare(grp(b)) || a.f.localeCompare(b.f));
+  else if (so === "nhi") rows.sort((a, b) => nv(b) - nv(a));
+  else if (so === "nlo") rows.sort((a, b) => (a.n_inf ?? 99) - (b.n_inf ?? 99));
+  else rows.sort((a, b) => a.f.localeCompare(b.f));
   $("fcount").textContent = `${rows.length} of ${DB.formulas.length} formulas`;
-  $("flist").innerHTML = rows.map((F) => `<div data-f="${esc(F.f)}" class="${CUR && CUR.f === F.f ? "on" : ""}" role="option">
+  let last = null;
+  $("flist").innerHTML = rows.map((F) => (so === "anion" && grp(F) !== last ? `<p class="grp">${esc(last = grp(F))}</p>` : "") + `<div data-f="${esc(F.f)}" class="${CUR && CUR.f === F.f ? "on" : ""}" role="option">
     <span>${F.removed ? `<s>${esc(F.f)}</s>` : esc(F.f)}${F.traceable || F.removed ? "" : ' <span title="used value not traceable">⚠</span>'}</span><span class="muted small">${F.removed ? "removed" : fmt(F.n_inf, 3)}</span></div>`).join("");
 }
 $("flist").addEventListener("click", (e) => { const d = e.target.closest("[data-f]"); if (d) openFormula(d.dataset.f); });
 $("q").addEventListener("input", () => { renderList(); const F = DB.formulas.find((x) => x.f.toLowerCase() === $("q").value.trim().toLowerCase()); if (F) openFormula(F.f); });
-$("fsrc").addEventListener("change", renderList); $("fflag").addEventListener("change", renderList);
+$("fsrc").addEventListener("change", renderList); $("fanion").addEventListener("change", renderList); $("fsort").addEventListener("change", renderList); $("fflag").addEventListener("change", renderList);
 
 // ---------------------------------------------------------------- one formula
 function traceChip(t) {
@@ -251,6 +267,7 @@ function openFormula(f, dsIndex) {
         <dt>Why this value</dt><dd>${esc(F.rule)}</dd>
         <dt>E₀ (used)</dt><dd>${F.E0 == null ? "–" : fmt(F.E0, 2) + " eV"} <span class="muted small">(${esc(F.E0_source)})</span></dd>
         <dt>E_d</dt><dd>${F.Ed == null ? "–" : fmt(F.Ed, 2) + " eV"} <span class="muted small">= E₀ (n∞² − 1), calculated from the two above</span></dd>
+        <dt>Anion class</dt><dd>${esc(F.anion)}${F.oxo ? " · " + esc(F.oxo) : ""} <span class="muted small">(the model's class: first of F, O, S, Se, Te, Cl, Br, I, N)</span></dd>
         <dt>Form</dt><dd>${esc(F.removed ? "–" : formName(F.form))}</dd>
         <dt>Crystal axes</dt><dd>${F.orient.length ? F.orient.map(esc).join("; ") : "–"} <span class="muted small">(how the used value treats crystal directions)</span></dd>
         <dt>Phase reported</dt><dd>${phases.length ? phases.map(esc).join("; ") : "not stated by any source"}</dd>
@@ -368,7 +385,7 @@ function metaGrid(d) {
   if (d.deposition || d.dep_T || d.anneal) rows.push(["Deposition", [d.deposition, d.dep_T && `${d.dep_T} °C`, d.anneal && `anneal: ${d.anneal}`].filter(Boolean).map(esc).join(" · ")]);
   rows.push(["Phase reported", esc(d.phase || "not stated")]);
   rows.push(["Crystal axes", esc(d.orient || "–") + (d.aniso ? ` · ${esc(d.aniso)}` : "") +
-    ((d.axes || []).length ? `<div class="muted small">${d.axes.map((a) => `${esc(a.axis)}: n∞ ${fmt(a.n_inf, 4)}`).join(" · ")}</div>` : "")]);
+    ((d.axes || []).length ? `<div class="muted small">${d.axes.map((a) => `${esc(a.axis)}: ${d.kind === "single" ? "n₅₈₉" : "n∞"} ${fmt(a.n_inf, 4)}`).join(" · ")}</div>` : "")]);
   rows.push(["Value type", esc(d.value_type || "–")]);
   rows.push(["How n∞ was obtained", esc(d.how || "–")]);
   if (d.method) rows.push(["Measurement method (Shannon code)", esc(d.method) + ` · stated error ${esc(d.error)}${d.eflag ? " · flag " + esc(d.eflag) : ""}` + (d.quality != null ? ` · our quality score ${d.quality}/3` : "")]);
@@ -496,6 +513,9 @@ function start() {
   $("lock").style.display = "none"; $("app").style.display = "block";
   $("ver").textContent = `data ${DB.version} · built ${DB.built} · ${DB.counts.formulas} training formulas (+${DB.counts.removed} removed) · ${DB.counts.datasets} datasets`;
   $("fdl").innerHTML = DB.formulas.map((F) => `<option value="${esc(F.f)}">`).join("");
+  const cnt = {}; DB.formulas.forEach((F) => { cnt[F.anion] = (cnt[F.anion] || 0) + 1; if (F.oxo) { const k = F.anion + " · " + F.oxo; cnt[k] = (cnt[k] || 0) + 1; } });
+  $("fanion").innerHTML = '<option value="">All anion classes</option>' + Object.keys(cnt).sort((a, b) => a.split(" · ")[0] === b.split(" · ")[0] ? a.localeCompare(b) : (cnt[b.split(" · ")[0]] - cnt[a.split(" · ")[0]]))
+    .map((k) => `<option value="${esc(k)}">${k.includes(" · ") ? "&nbsp;&nbsp;– " + esc(k.split(" · ")[1]) : esc(k)} (${cnt[k]})</option>`).join("");
   const want = decodeURIComponent(location.hash.slice(1));
   const go = () => openFormula(DB.formulas.some((F) => F.f === want) ? want : DB.formulas[0].f);
   if (window.Plotly) go(); else $("plotlyjs").addEventListener("load", go);
