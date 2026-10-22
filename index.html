@@ -151,7 +151,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 </div>
 
 <script>
-const META = {"salt": "I0MCskH69b64Vmyc+qv0MQ==", "iter": 310000};
+const META = {"salt": "fqqu6FjNdzhiGKze/FTmvw==", "iter": 310000};
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const link = (url, text) => /^https?:\/\//.test(url || "") ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text || url)}</a>` : esc(text || "");
@@ -311,7 +311,7 @@ function renderTable() {
       <td><span class="dot" style="background:${css(FAM[d.family] || "--c-sh17")}"></span>${esc(d.family)}<div class="muted small">${esc(d.origin)}</div></td>
       <td style="min-width:220px">${esc((d.ref || "").slice(0, 140))}${(d.ref || "").length > 140 ? "…" : ""}<div class="small">${d.doi ? link(d.doi, "DOI") : ""} ${d.rii_url ? "· " + link(d.rii_url, "refractiveindex.info") : ""}</div></td>
       <td>${esc(formName(d.form))}${d.thick ? `<div class="muted small">${esc(d.thick)}</div>` : ""}</td>
-      <td class="small" style="max-width:220px">${esc(d.phase)}</td>
+      <td class="small" style="max-width:220px">${d.phase_word ? `<b>${esc(d.phase_word)}</b><br>` : ""}${esc(d.phase)}</td>
       <td class="small">${d.orient === "one axis only" ? `<span style="color:var(--warn)">${esc(d.orient)}</span>` : esc(d.orient || "–")}${(d.axes || []).length ? `<div class="muted">${d.axes.map((a) => `${esc(a.axis)}: ${fmt(a.n_inf, 4)}`).join("<br>")}</div>` : ""}</td>
       <td class="small">${esc(d.value_type || "–")}</td>
       <td class="num">${d.n_inf == null ? (d.n589 != null ? `<span class="muted" title="n at 589 nm, not n∞">n₅₈₉ ${fmt(d.n589, 4)}</span>` : "–") : fmt(d.n_inf, 4)}</td>
