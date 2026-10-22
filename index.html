@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>n∞ Source Tracker</title>
+<meta name="robots" content="noindex, nofollow">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.34.0/plotly.min.js" defer id="plotlyjs"></script>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1f22; --muted: #5d6470; --line: #dfe1e5; --soft: #eef0f3;
+  --accent: #2459c9; --used: #1f8a4c; --usedbg: #e7f5ec; --warn: #b4410f; --warnbg: #fdeee6; --amber: #8a6300; --amberbg: #fdf5dc;
+  --c-rii: #2f6fdb; --c-lit: #0f9488; --c-open: #7a4fd1; --c-sh02: #d9730d; --c-w71: #c62f3c; --c-w73: #c2408f; --c-sh17: #8b929c;
+  --grid: #e6e8ec;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131417; --panel: #1b1d21; --ink: #e8e9ec; --muted: #a0a6b1; --line: #30333a; --soft: #24272d;
+    --accent: #7aa2ff; --used: #4cc47f; --usedbg: #173323; --warn: #ff8a5c; --warnbg: #3a1f15; --amber: #f0c45a; --amberbg: #362c10;
+    --c-rii: #6c9cff; --c-lit: #3cc4b6; --c-open: #a687f0; --c-sh02: #f29a45; --c-w71: #ff6b77; --c-w73: #ee77bd; --c-sh17: #9aa1ab;
+    --grid: #2b2e35; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131417; --panel: #1b1d21; --ink: #e8e9ec; --muted: #a0a6b1; --line: #30333a; --soft: #24272d;
+  --accent: #7aa2ff; --used: #4cc47f; --usedbg: #173323; --warn: #ff8a5c; --warnbg: #3a1f15; --amber: #f0c45a; --amberbg: #362c10;
+  --c-rii: #6c9cff; --c-lit: #3cc4b6; --c-open: #a687f0; --c-sh02: #f29a45; --c-w71: #ff6b77; --c-w73: #ee77bd; --c-sh17: #9aa1ab;
+  --grid: #2b2e35; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+h1 { font-size: 18px; margin: 0; } h2 { font-size: 15px; margin: 0 0 8px; } h3 { font-size: 13px; margin: 14px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.muted { color: var(--muted); } .small { font-size: 12px; } .mono { font-family: ui-monospace, Consolas, monospace; }
+button, input, select { font: inherit; color: inherit; }
+/* lock screen */
+#lock { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+#lock form { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 24px; width: min(380px, 100%); }
+#lock input { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); margin: 12px 0; }
+.btn { padding: 8px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--accent); }
+#lockmsg { min-height: 1.4em; color: var(--warn); font-size: 13px; }
+/* layout */
+#app { display: none; }
+header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+header .sp { flex: 1; }
+.layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: calc(100vh - 54px); }
+aside { border-right: 1px solid var(--line); background: var(--panel); padding: 12px; position: sticky; top: 54px; height: calc(100vh - 54px); display: flex; flex-direction: column; gap: 8px; }
+aside input, aside select { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+#flist { overflow: auto; flex: 1; border: 1px solid var(--line); border-radius: 6px; }
+#flist div { padding: 5px 9px; cursor: pointer; display: flex; justify-content: space-between; gap: 6px; border-bottom: 1px solid var(--soft); }
+#flist div:hover { background: var(--soft); } #flist div.on { background: var(--accent); color: #fff; }
+#flist div.on .muted { color: #e9eefc; }
+main { padding: 16px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.sum { display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; align-items: start; }
+.big { font-size: 30px; font-weight: 650; letter-spacing: -.01em; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { font-size: 12px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); background: var(--soft); white-space: nowrap; }
+.chip.ok { background: var(--usedbg); border-color: transparent; color: var(--used); }
+.chip.bad { background: var(--warnbg); border-color: transparent; color: var(--warn); }
+.chip.mid { background: var(--amberbg); border-color: transparent; color: var(--amber); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+.tw { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; position: sticky; top: 0; background: var(--panel); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#dtab tbody tr { cursor: pointer; } #dtab tbody tr:hover { background: var(--soft); }
+#dtab tr.used { background: var(--usedbg); } #dtab tr.sel { outline: 2px solid var(--accent); outline-offset: -2px; }
+#dtab tr.dim td { color: var(--muted); }
+.usedtag { font-weight: 650; color: var(--used); white-space: nowrap; }
+.plots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.plot { width: 100%; height: 340px; }
+#cmp { width: 100%; }
+.note { padding: 8px 10px; border-radius: 6px; background: var(--soft); font-size: 13px; }
+.note.bad { background: var(--warnbg); color: var(--warn); } .note.ok { background: var(--usedbg); }
+.steps { margin: 6px 0 0; padding-left: 20px; } .steps li { margin: 3px 0; }
+details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
+.ptable { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+.ptable td, .ptable th { padding: 3px 8px; }
+.ptable tr.kept td { background: var(--usedbg); }
+.imgs img { max-width: 100%; border: 1px solid var(--line); border-radius: 6px; background: #fff; margin-top: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  aside { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  #flist { max-height: 220px; }
+  .plots { grid-template-columns: 1fr; }
+  .sum { grid-template-columns: minmax(0, 1fr); }
+  main { padding: 12px 16px; }
+}
+</style>
+</head>
+<body>
+<div id="lock">
+  <form id="lockform" autocomplete="off">
+    <h1>n∞ database: source tracker</h1>
+    <p class="muted small">Every value in the training table, where it came from, and how n∞ and E₀ were obtained. Enter the password you were given.</p>
+    <input type="password" id="pw" placeholder="Password" autofocus>
+    <div id="lockmsg"></div>
+    <button class="btn" type="submit">Open</button>
+  </form>
+</div>
+
+<div id="app">
+  <header>
+    <h1>n∞ source tracker</h1>
+    <span class="muted small" id="ver"></span>
+    <span class="sp"></span>
+    <button class="btn ghost" id="theme" type="button" title="Switch light / dark">Theme</button>
+  </header>
+  <div class="layout">
+    <aside>
+      <input id="q" type="search" placeholder="Search formula (e.g. TiO2)" list="fdl" autocomplete="off">
+      <datalist id="fdl"></datalist>
+      <select id="fsrc">
+        <option value="">All sources used</option>
+        <option value="our fits">Our fits</option>
+        <option value="Shannon 2002">Shannon 2002</option>
+        <option value="Wemple tables">Wemple tables</option>
+      </select>
+      <select id="fflag">
+        <option value="">No flag filter</option>
+        <option value="untrace">Used value not traceable</option>
+        <option value="multi">More than one n∞ source</option>
+        <option value="spread">Sources differ by &gt; 3 %</option>
+        <option value="mpclear">Clear MP id</option>
+        <option value="mpunclear">No clear MP id</option>
+        <option value="film">Uses thin-film value</option>
+        <option value="avg">Used value averages crystal axes</option>
+        <option value="oneaxis">Used value is one axis only</option>
+        <option value="removed">Removed from training</option>
+      </select>
+      <div class="small muted" id="fcount"></div>
+      <div id="flist" role="listbox" aria-label="Formulas"></div>
+    </aside>
+    <main id="main"></main>
+  </div>
+</div>
+
+<script>
+const META = {"salt": "+LkAL0tMr1ZC4FMBlD9/sw==", "iter": 310000};
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const link = (url, text) => /^https?:\/\//.test(url || "") ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text || url)}</a>` : esc(text || "");
+const fmt = (v, d = 4) => v == null ? "–" : Number(v).toFixed(d);
+const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const ss = { get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} } };
+const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+let DB = null, KEY = null, CUR = null, SEL = 0;
+const FAM = { "refractiveindex.info": "--c-rii", "our literature search": "--c-lit", "open dataset": "--c-open", "Shannon 2002": "--c-sh02",
+  "Wemple 1971": "--c-w71", "Wemple 1973": "--c-w73", "Shannon 2017": "--c-sh17" };
+const FORM = { bulk: ["circle", "bulk"], thin_film: ["diamond", "thin film"], glass: ["square", "glass"], amorphous: ["square", "amorphous"],
+  bulk_or_unspecified: ["triangle-up", "not stated"] };
+const formName = (f) => (FORM[f] || [null, f || "not stated"])[1];
+
+// ---------------------------------------------------------------- decrypt
+const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function deriveKey(pw) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64(META.salt), iterations: META.iter, hash: "SHA-256" }, base,
+    { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+}
+async function decryptBuf(buf) {
+  const u = new Uint8Array(buf);
+  return crypto.subtle.decrypt({ name: "AES-GCM", iv: u.slice(0, 12) }, KEY, u.slice(12));
+}
+async function inflate(buf) {
+  const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream("deflate"));
+  return new Response(ds).text();
+}
+async function unlock(pw) {
+  if (META && META.plain) { DB = await (await fetch("data.json", { cache: "no-store" })).json(); return; }
+  KEY = await deriveKey(pw);
+  const enc = await (await fetch("data.bin", { cache: "no-store" })).arrayBuffer();
+  const plain = await decryptBuf(enc);   // throws on a wrong password
+  DB = JSON.parse(await inflate(plain));
+}
+async function imgURL(tok) {
+  if (META.plain) return `img/${tok}.png`;
+  const buf = await (await fetch(`img/${tok}.bin`)).arrayBuffer();
+  return URL.createObjectURL(new Blob([await decryptBuf(buf)], { type: "image/png" }));
+}
+
+$("lockform").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("lockmsg").textContent = "Opening…";
+  try { await unlock($("pw").value); ss.set("ninfpw", $("pw").value); start(); }
+  catch (err) { $("lockmsg").textContent = "Wrong password (or the data could not be loaded)."; }
+});
+
+// ---------------------------------------------------------------- formula list
+function flags(F) {
+  const ns = F.ds.filter((d) => d.n_inf != null).map((d) => d.n_inf);
+  const fams = new Set(F.ds.filter((d) => d.n_inf != null).map((d) => d.family));
+  const spread = ns.length > 1 ? 100 * (Math.max(...ns) / Math.min(...ns) - 1) : 0;
+  return { multi: fams.size > 1, spread };
+}
+function renderList() {
+  const q = $("q").value.trim().toLowerCase(), src = $("fsrc").value, fl = $("fflag").value;
+  const rows = DB.formulas.filter((F) => {
+    if (q && !F.f.toLowerCase().includes(q)) return false;
+    if (src && !F.source.startsWith(src)) return false;
+    const g = flags(F);
+    if (fl === "untrace" && F.traceable) return false;
+    if (fl === "multi" && !g.multi) return false;
+    if (fl === "spread" && g.spread <= 3) return false;
+    if (fl === "mpclear" && F.mp_clear !== "yes") return false;
+    if (fl === "mpunclear" && F.mp_clear === "yes") return false;
+    if (fl === "film" && F.form !== "thin_film") return false;
+    if (fl === "avg" && !F.orient.includes("average of axes")) return false;
+    if (fl === "oneaxis" && !F.orient.includes("one axis only")) return false;
+    if (fl === "removed" && !F.removed) return false;
+    return true;
+  });
+  $("fcount").textContent = `${rows.length} of ${DB.formulas.length} formulas`;
+  $("flist").innerHTML = rows.map((F) => `<div data-f="${esc(F.f)}" class="${CUR && CUR.f === F.f ? "on" : ""}" role="option">
+    <span>${F.removed ? `<s>${esc(F.f)}</s>` : esc(F.f)}${F.traceable || F.removed ? "" : ' <span title="used value not traceable">⚠</span>'}</span><span class="muted small">${F.removed ? "removed" : fmt(F.n_inf, 3)}</span></div>`).join("");
+}
+$("flist").addEventListener("click", (e) => { const d = e.target.closest("[data-f]"); if (d) openFormula(d.dataset.f); });
+$("q").addEventListener("input", () => { renderList(); const F = DB.formulas.find((x) => x.f.toLowerCase() === $("q").value.trim().toLowerCase()); if (F) openFormula(F.f); });
+$("fsrc").addEventListener("change", renderList); $("fflag").addEventListener("change", renderList);
+
+// ---------------------------------------------------------------- one formula
+function traceChip(t) {
+  if (/^NOT/.test(t)) return `<span class="chip bad">${esc(t)}</span>`;
+  if (/DOI/.test(t)) return `<span class="chip ok">DOI link</span>`;
+  if (/unpublished/.test(t)) return `<span class="chip mid">${esc(t)}</span>`;
+  return `<span class="chip mid">${esc(t === "citation" ? "citation, no DOI" : t)}</span>`;
+}
+function openFormula(f, dsIndex) {
+  CUR = DB.formulas.find((x) => x.f === f); if (!CUR) return;
+  location.hash = encodeURIComponent(f);
+  const F = CUR;
+  SEL = dsIndex ?? Math.max(0, F.ds.findIndex((d) => d.used));
+  const phases = [...new Set(F.ds.filter((d) => d.n_inf != null && d.phase && d.phase !== "not stated").map((d) => d.phase))];
+  const mpChip = F.mp_clear === "yes" ? "ok" : F.mp_clear === "partly" ? "mid" : "bad";
+  const mpLink = F.mp_id ? link(`https://next-gen.materialsproject.org/materials/${F.mp_id}`, F.mp_id) : "none";
+  $("main").innerHTML = `
+  <section class="card sum">
+    <div>
+      <div class="muted small">Formula</div><div class="big">${esc(F.f)}</div>
+      <div class="muted small" style="margin-top:6px">n∞ used in training</div><div class="big" style="color:${F.removed ? "var(--warn)" : "var(--used)"}">${F.removed ? "removed" : fmt(F.n_inf, 4)}</div>
+    </div>
+    <div>
+      <dl class="kv">
+        <dt>Why this value</dt><dd>${esc(F.rule)}</dd>
+        <dt>E₀ (used)</dt><dd>${F.E0 == null ? "–" : fmt(F.E0, 2) + " eV"} <span class="muted small">(${esc(F.E0_source)})</span></dd>
+        <dt>E_d</dt><dd>${F.Ed == null ? "–" : fmt(F.Ed, 2) + " eV"} <span class="muted small">= E₀ (n∞² − 1), calculated from the two above</span></dd>
+        <dt>Form</dt><dd>${esc(F.removed ? "–" : formName(F.form))}</dd>
+        <dt>Crystal axes</dt><dd>${F.orient.length ? F.orient.map(esc).join("; ") : "–"} <span class="muted small">(how the used value treats crystal directions)</span></dd>
+        <dt>Phase reported</dt><dd>${phases.length ? phases.map(esc).join("; ") : "not stated by any source"}</dd>
+        <dt>Materials Project</dt><dd>${mpLink}${F.mp_sg ? ` <span class="muted">(${esc(F.mp_sg)})</span>` : ""} · ${esc(F.mp_note)}${F.mp_n ? ` <span class="muted small">(${F.mp_n} MP entries, ${F.mp_poly} within 50 meV)</span>` : ""}</dd>
+        <dt>Measured gap</dt><dd>${F.Eg == null ? "–" : fmt(F.Eg, 2) + " eV"}</dd>
+      </dl>
+      <div class="chips">
+        ${F.removed ? '<span class="chip bad">removed from training</span>' : `<span class="chip ${F.traceable ? "ok" : "bad"}">${F.traceable ? "used value traceable" : "used value NOT traceable to a measurement"}</span>`}
+        ${F.orient.includes("one axis only") ? '<span class="chip bad">used value includes a one-axis-only measurement</span>' : F.orient.includes("average of axes") ? '<span class="chip">axis-averaged</span>' : ""}
+        <span class="chip ${mpChip}">MP id: ${F.mp_clear === "yes" ? "clear" : F.mp_clear === "partly" ? "phase named" : "not clear"}</span>
+        <span class="chip">${F.stoich ? "whole-number formula" : "mixed composition"}</span>
+        ${F.hydrate ? '<span class="chip mid">contains H</span>' : ""}
+        <span class="chip">${F.ds.filter((d) => d.n_inf != null).length} n∞ value(s) from ${new Set(F.ds.filter((d) => d.n_inf != null).map((d) => d.family)).size} source(s)</span>
+      </div>
+    </div>
+  </section>
+  ${F.removed ? `<section class="card note bad">Removed from the training table on purpose: ${esc(F.removed)}</section>` : ""}
+  <section class="card">
+    <h2>All n∞ values for ${esc(F.f)}</h2>
+    <div class="legend" id="cmplegend"></div>
+    <div id="cmp"></div>
+    <div class="small muted">Filled marker = used for the training value. Shaded band = ±1 % around the used value. Click a point to open its dataset.</div>
+  </section>
+  <section class="card">
+    <h2>Datasets</h2>
+    <div class="tw"><table id="dtab"><thead><tr>
+      <th>Used</th><th>Source</th><th>Reference</th><th>Form</th><th>Phase reported</th><th>Crystal axes</th><th>Value type</th>
+      <th class="num">n∞</th><th class="num">Δ vs used</th><th class="num">E₀ (eV)</th><th class="num">E_d (eV)</th><th>Traceability</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+  <section class="card" id="detail"></section>`;
+  renderTable(); renderCmp(); renderDetail(); renderList();
+  const on = $("flist").querySelector(".on"); if (on) on.scrollIntoView({ block: "nearest" });
+}
+
+function renderTable() {
+  const F = CUR;
+  $("dtab").querySelector("tbody").innerHTML = F.ds.map((d, i) => `
+    <tr data-i="${i}" class="${d.used ? "used" : ""} ${i === SEL ? "sel" : ""} ${d.n_inf == null ? "dim" : ""}">
+      <td>${d.used ? '<span class="usedtag">✓ used</span>' : `<span class="muted small" title="${esc(d.notused)}">not used</span>`}</td>
+      <td><span class="dot" style="background:${css(FAM[d.family] || "--c-sh17")}"></span>${esc(d.family)}<div class="muted small">${esc(d.origin)}</div></td>
+      <td style="min-width:220px">${esc((d.ref || "").slice(0, 140))}${(d.ref || "").length > 140 ? "…" : ""}<div class="small">${d.doi ? link(d.doi, "DOI") : ""} ${d.rii_url ? "· " + link(d.rii_url, "refractiveindex.info") : ""}</div></td>
+      <td>${esc(formName(d.form))}${d.thick ? `<div class="muted small">${esc(d.thick)}</div>` : ""}</td>
+      <td class="small" style="max-width:220px">${esc(d.phase)}</td>
+      <td class="small">${d.orient === "one axis only" ? `<span style="color:var(--warn)">${esc(d.orient)}</span>` : esc(d.orient || "–")}${(d.axes || []).length ? `<div class="muted">${d.axes.map((a) => `${esc(a.axis)}: ${fmt(a.n_inf, 4)}`).join("<br>")}</div>` : ""}</td>
+      <td class="small">${esc(d.value_type || "–")}</td>
+      <td class="num">${d.n_inf == null ? (d.n589 != null ? `<span class="muted" title="n at 589 nm, not n∞">n₅₈₉ ${fmt(d.n589, 4)}</span>` : "–") : fmt(d.n_inf, 4)}</td>
+      <td class="num">${d.diff_pct == null ? "–" : (d.diff_pct > 0 ? "+" : "") + d.diff_pct.toFixed(2) + " %"}</td>
+      <td class="num">${fmt(d.E0, 2)}</td><td class="num">${fmt(d.Ed, 2)}</td>
+      <td>${traceChip(d.trace)}</td>
+    </tr>`).join("");
+  $("dtab").querySelectorAll("tbody tr").forEach((tr) => tr.addEventListener("click", () => { SEL = +tr.dataset.i; renderTable(); renderDetail(); $("detail").scrollIntoView({ behavior: "smooth", block: "start" }); }));
+}
+
+function baseLayout(extra) {
+  const ink = css("--ink"), grid = css("--grid"), muted = css("--muted");
+  return Object.assign({
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: { color: ink, size: 12, family: "system-ui, sans-serif" },
+    margin: { l: 60, r: 16, t: 30, b: 46 }, hoverlabel: { font: { size: 12 } },
+    xaxis: { gridcolor: grid, zerolinecolor: grid, linecolor: muted }, yaxis: { gridcolor: grid, zerolinecolor: grid, linecolor: muted },
+    legend: { orientation: "h", y: -0.22, font: { size: 11 } },
+  }, extra);
+}
+const PCONF = { displaylogo: false, responsive: true, modeBarButtonsToRemove: ["lasso2d", "select2d", "autoScale2d"] };
+
+function renderCmp() {
+  const F = CUR;
+  const pts = F.ds.map((d, i) => ({ d, i })).filter((p) => p.d.n_inf != null);
+  const fams = [...new Set(pts.map((p) => p.d.family))];
+  $("cmplegend").innerHTML = fams.map((f) => `<span><span class="dot" style="background:${css(FAM[f])}"></span>${esc(f)}</span>`).join("") +
+    Object.entries({ circle: "bulk", diamond: "thin film", square: "glass / amorphous", "triangle-up": "form not stated" })
+      .map(([s, t]) => `<span>${{ circle: "●", diamond: "◆", square: "■", "triangle-up": "▲" }[s]} ${t}</span>`).join("");
+  if (!pts.length) { $("cmp").innerHTML = '<p class="muted">No n∞ values to compare.</p>'; return; }
+  const labels = pts.map((p, k) => `${k + 1}. ${(p.d.label || "").startsWith(p.d.family) ? "" : p.d.family + ": "}${(p.d.label || "").slice(0, 44)}`);
+  const sym = (p) => (FORM[p.d.form] || FORM.bulk_or_unspecified)[0] + (p.d.used ? "" : "-open");
+  const tr = {
+    type: "scatter", mode: "markers", x: pts.map((p) => p.d.n_inf), y: labels,
+    marker: { size: pts.map((p) => p.d.used ? 13 : 11), symbol: pts.map(sym), color: pts.map((p) => css(FAM[p.d.family] || "--c-sh17")),
+      line: { width: pts.map((p) => p.d.used ? 1.5 : 2), color: pts.map((p) => p.d.used ? css("--ink") : css(FAM[p.d.family] || "--c-sh17")) } },
+    customdata: pts.map((p) => p.i),
+    text: pts.map((p) => [`<b>${esc(p.d.family)}</b>`, esc((p.d.ref || "").slice(0, 90)), `form: ${esc(formName(p.d.form))}`,
+      `phase: ${esc((p.d.phase || "").slice(0, 70))}`, `n∞ ${fmt(p.d.n_inf, 4)}  (${p.d.diff_pct > 0 ? "+" : ""}${p.d.diff_pct} %)`,
+      p.d.used ? "<b>USED</b>" : "not used: " + esc((p.d.notused || "").slice(0, 80)), esc(p.d.trace)].join("<br>")),
+    hovertemplate: "%{text}<extra></extra>", showlegend: false,
+  };
+  const xs = pts.map((p) => p.d.n_inf).concat([F.n_inf]);
+  const lo = Math.min(...xs, F.n_inf * 0.99), hi = Math.max(...xs, F.n_inf * 1.01), pad = (hi - lo) * 0.08 || 0.01;
+  const h = Math.max(150, 46 + 30 * pts.length);
+  $("cmp").style.height = h + "px";
+  Plotly.react("cmp", [tr], baseLayout({
+    margin: { l: Math.min(330, 8 + 6.4 * Math.max(...labels.map((l) => l.length))), r: 16, t: 10, b: 40 },
+    xaxis: { title: "n∞", range: [lo - pad, hi + pad], gridcolor: css("--grid"), zeroline: false },
+    yaxis: { autorange: "reversed", gridcolor: css("--grid"), tickfont: { size: 11 } },
+    shapes: [
+      { type: "rect", xref: "x", yref: "paper", x0: F.n_inf * 0.99, x1: F.n_inf * 1.01, y0: 0, y1: 1, fillcolor: css("--used"), opacity: 0.1, line: { width: 0 } },
+      { type: "line", xref: "x", yref: "paper", x0: F.n_inf, x1: F.n_inf, y0: 0, y1: 1, line: { color: css("--used"), width: 2, dash: "dot" } }],
+    annotations: [{ x: F.n_inf, y: 1, xref: "x", yref: "paper", text: "used " + fmt(F.n_inf, 4), showarrow: false, yanchor: "bottom", font: { color: css("--used"), size: 11 } }],
+  }), PCONF);
+  $("cmp").on("plotly_click", (ev) => { SEL = ev.points[0].customdata; renderTable(); renderDetail(); $("detail").scrollIntoView({ behavior: "smooth", block: "start" }); });
+}
+
+// ---------------------------------------------------------------- dataset detail
+function metaGrid(d) {
+  const rows = [
+    ["Status", d.used ? '<span class="usedtag">✓ used for the training value</span>' : "not used: " + esc(d.notused)],
+    ["Data came from", esc(d.family) + " · " + esc(d.origin) + (d.origin_detail ? `<div class="muted small">${esc(d.origin_detail)}</div>` : "")],
+    ["Original reference", esc(d.ref) + (d.doi ? `<br>${link(d.doi, d.doi)}` : "") + (d.doi_title ? `<div class="muted small">DOI found by us via Crossref (same journal, volume, first page, year); its title: “${esc(d.doi_title)}”</div>` : "") +
+      (d.search ? `<div class="small">${link(d.search, "search this citation on Google Scholar")}</div>` : "")],
+  ];
+  if (d.base_ref) rows.push(["Read from", esc(d.base_ref) + " · " + link(d.base_doi, "DOI")]);
+  if (d.rii_url) rows.push(["Database page", link(d.rii_url, d.rii_url)]);
+  if (d.paper_link) rows.push(["Paper we read", `${esc(d.paper_id)}: ${link(d.paper_link, d.paper_title || d.paper_link)}`]);
+  rows.push(["Traceability", traceChip(d.trace)]);
+  rows.push(["Form", esc(formName(d.form)) + (d.thick ? ` · thickness ${esc(d.thick)}` : "") + (d.substrate ? ` · substrate ${esc(d.substrate)}` : "")]);
+  if (d.deposition || d.dep_T || d.anneal) rows.push(["Deposition", [d.deposition, d.dep_T && `${d.dep_T} °C`, d.anneal && `anneal: ${d.anneal}`].filter(Boolean).map(esc).join(" · ")]);
+  rows.push(["Phase reported", esc(d.phase || "not stated")]);
+  rows.push(["Crystal axes", esc(d.orient || "–") + (d.aniso ? ` · ${esc(d.aniso)}` : "") +
+    ((d.axes || []).length ? `<div class="muted small">${d.axes.map((a) => `${esc(a.axis)}: n∞ ${fmt(a.n_inf, 4)}`).join(" · ")}</div>` : "")]);
+  rows.push(["Value type", esc(d.value_type || "–")]);
+  rows.push(["How n∞ was obtained", esc(d.how || "–")]);
+  if (d.method) rows.push(["Measurement method (Shannon code)", esc(d.method) + ` · stated error ${esc(d.error)}${d.eflag ? " · flag " + esc(d.eflag) : ""}` + (d.quality != null ? ` · our quality score ${d.quality}/3` : "")]);
+  rows.push(["n∞ · E₀ · E_d", `${fmt(d.n_inf, 4)} · ${d.E0 == null ? "–" : fmt(d.E0, 2) + " eV"} · ${d.Ed == null ? "–" : fmt(d.Ed, 2) + " eV"}`]);
+  return `<dl class="kv">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
+}
+
+function renderDetail() {
+  const F = CUR, d = F.ds[SEL];
+  if (!d) { $("detail").innerHTML = ""; return; }
+  let html = `<h2>Dataset ${SEL + 1}: ${esc(d.family)}${d.used ? ' <span class="usedtag">· used</span>' : ""}</h2>${metaGrid(d)}`;
+  if (d.kind === "ours" && d.pages && d.pages.length) {
+    html += `<h3>How n∞ and E₀ were extracted</h3>
+      <ol class="steps small">
+        <li>Take the source's n(λ) (left plot). Keep only transparent points: the shaded window, k &lt; 10⁻³ where k is known, and below 0.8 × the band gap.</li>
+        <li>Plot 1/(n² − 1) against E² (right plot, E = 1239.84/λ[nm] eV). The single-oscillator model n² − 1 = E₀E_d / (E₀² − E²) is a straight line there.</li>
+        <li>Fit the line to the kept points: intercept a = E₀/E_d, slope b = −1/(E₀E_d).</li>
+        <li>n∞ = √(1 + 1/a) (the line at E = 0), E₀ = √(a / |b|), E_d = E₀ (n∞² − 1).</li>
+        ${d.pages.length > 1 ? `<li>This measurement has ${d.pages.length} crystal axes; n∞² is combined as ${esc(d.aniso)}.</li>` : ""}
+      </ol>`;
+    d.pages.forEach((p, k) => {
+      const P = DB.plots[p]; if (!P) return;
+      html += `<div class="small muted" style="margin-top:10px">${esc(P.name || p)}${P.dir ? " · axis " + esc(P.dir) : ""} · ${esc(P.nkind || "")}</div>
+        ${P.eps == null ? `<div class="note bad">No n∞ from this page: ${esc(P.why_n || "")}</div>` : `<div class="note ok small">This page: n∞ = ${fmt(Math.sqrt(P.eps), 4)}, E₀ = ${fmt(P.E0, 2)} eV, E_d = ${fmt(P.Ed, 2)} eV · ${P.lim && P.lim.nused ? P.lim.nused + " points kept" : ""}${P.lim && P.lim.ntot ? " of " + P.lim.ntot : ""} · largest misfit ${P.err == null ? "–" : (100 * P.err).toFixed(2) + " %"}${P.lim && P.lim.emax_from ? " · edge cut: " + esc(P.lim.emax_from) : ""}</div>`}
+        <div class="plots"><div class="plot" id="pn${k}"></div><div class="plot" id="pw${k}"></div></div>
+        <details><summary>${P.table ? "Show the source data table (green = points kept for the fit)" : "Show the published formula"}</summary>${tableHTML(P)}</details>`;
+    });
+    if (d.overlays && d.overlays.length) {
+      html += `<h3>Digitising check (overlay of our extracted points on the paper's figure)</h3>
+        <div class="small muted">${esc(d.overlays[0].note || "")}</div><div class="imgs" id="imgs">${d.overlays.map((o) => `<div class="small muted" style="margin-top:8px">${esc(o.file)}</div><img alt="${esc(o.file)}" data-tok="${esc(DB.img[o.file] || "")}">`).join("")}</div>`;
+    } else if (/digitised|vector/i.test(d.origin || "")) {
+      html += `<div class="note small" style="margin-top:8px">No overlay image stored for this dataset.</div>`;
+    } else if (/numeric table|printed table/i.test((d.origin || "") + (d.origin_detail || ""))) {
+      html += `<div class="note small" style="margin-top:8px">Tabulated data: n,k taken as printed in the source (table above), not digitised.</div>`;
+    }
+  } else if (d.kind === "shannon" || d.kind === "wemple") {
+    const canLine = d.kind === "shannon" ? (d.A != null && d.B != null) : (d.E0 != null && d.Ed != null);
+    html += `<h3>How n∞ and E₀ were obtained</h3><div class="note small">${esc(d.how)}</div>`;
+    if (canLine) html += `<div class="small muted" style="margin-top:6px">The curves below are rebuilt from the printed constants (no measured points are printed in ${d.kind === "shannon" ? "Shannon 2002" : "the Wemple tables"}).</div>
+      <div class="plots"><div class="plot" id="pn0"></div><div class="plot" id="pw0"></div></div>`;
+    if (d.kind === "shannon") html += `<h3>The row as printed in Shannon 2002, Table 1 (PDF page ${d.pdf_page})</h3><div class="tw"><table class="small">
+      <tr><th>name (as printed)</th><th class="num">nx</th><th class="num">ny</th><th class="num">nz</th><th class="num">n_D x,y,z (589 nm)</th><th class="num">A</th><th class="num">B</th><th class="num">E₀</th><th class="num">E_d</th><th>method</th><th>error</th></tr>
+      <tr><td>${esc(d.phase.replace(/^as printed: /, ""))}</td>${d.nx.map((v) => `<td class="num">${v == null ? "–" : v}</td>`).join("")}<td class="num">${d.nD.filter((v) => v != null).join(", ") || "–"}</td>
+      <td class="num">${d.A ?? "–"}</td><td class="num">${d.B ?? "–"}</td><td class="num">${d.E0 ?? "–"}</td><td class="num">${d.Ed ?? "–"}</td><td>${esc(d.method)}</td><td>${esc(d.error)}</td></tr></table></div>`;
+  } else if (d.kind === "single") {
+    html += `<div class="note small" style="margin-top:8px">${esc(d.how)}. n at 589 nm = ${fmt(d.n589, 4)}.</div>`;
+  }
+  html += `<div style="margin-top:12px"><button class="btn ghost" id="copynote" type="button">Copy a note about this dataset</button> <span class="small muted" id="copied"></span></div>`;
+  $("detail").innerHTML = html;
+  $("copynote").onclick = () => {
+    const t = `Formula ${F.f}, dataset ${SEL + 1} (${d.family}; ${d.ref}; n∞ ${fmt(d.n_inf, 4)}; data ${DB.version}): `;
+    navigator.clipboard?.writeText(t).then(() => { $("copied").textContent = "copied, paste it into an email with your comment"; }, () => { $("copied").textContent = t; });
+  };
+  if (d.kind === "ours") d.pages.forEach((p, k) => DB.plots[p] && drawOurs(DB.plots[p], k));
+  else if (d.kind === "shannon" && d.A != null && d.B != null) drawLine(d, (E2) => d.B - d.A * E2 / (1.23984193 ** 2));
+  else if (d.kind === "wemple" && d.E0 != null && d.Ed != null) drawLine(d, (E2) => d.E0 / d.Ed - E2 / (d.E0 * d.Ed));
+  document.querySelectorAll("#imgs img[data-tok]").forEach(async (im) => { if (im.dataset.tok) im.src = await imgURL(im.dataset.tok); });
+}
+
+function tableHTML(P) {
+  if (P.table) return `<div class="ptable"><table class="small"><thead><tr><th class="num">λ (µm)</th><th class="num">n</th><th class="num">k</th><th>used in fit</th></tr></thead><tbody>
+    ${P.table.map((r) => `<tr class="${r[3] ? "kept" : ""}"><td class="num">${r[0]}</td><td class="num">${r[1]}</td><td class="num">${r[2] == null ? "–" : r[2]}</td><td>${r[3] ? "yes" : ""}</td></tr>`).join("")}
+    </tbody></table></div><div class="small muted">Down-sampled to at most 260 rows for display. Source file: <span class="mono">${esc(P.file || "")}</span></div>`;
+  return `<div class="note small mono">${esc(P.formula_text || "")}</div>`;
+}
+
+function drawOurs(P, k) {
+  const HC = 1239.84193, cN = css("--c-rii"), cK = css("--c-sh02"), cU = css("--used"), muted = css("--muted");
+  const lamN = P.nE.map((E) => HC / E), lamF = (P.fE || []).map((E) => HC / E);
+  const tr = [{ x: lamN, y: P.nN, mode: "markers+lines", name: "n (source)", marker: { size: 4, color: cN }, line: { width: 1, color: cN } }];
+  if (lamF.length) tr.push({ x: lamF, y: P.fN, mode: "markers", name: "n kept for fit", marker: { size: 7, color: cU, symbol: "circle-open", line: { width: 1.6 } } });
+  if (P.nK && P.nK.some((v) => v != null)) tr.push({ x: lamN, y: P.nK, mode: "lines", name: "k", yaxis: "y2", line: { width: 1.4, color: cK, dash: "dot" } });
+  const shapes = [];
+  if (P.lim && P.lim.lo != null && P.lim.hi != null) {
+    let hi = P.lim.hi * 1000, lo = P.lim.lo * 1000;
+    if (P.lim.emax) lo = Math.max(lo, HC / P.lim.emax);
+    shapes.push({ type: "rect", xref: "x", yref: "paper", x0: lo, x1: hi, y0: 0, y1: 1, fillcolor: cU, opacity: 0.08, line: { width: 0 } });
+  }
+  Plotly.react("pn" + k, tr, baseLayout({
+    title: { text: "Step 1: n and k vs wavelength", font: { size: 13 }, x: 0.02 }, shapes,
+    xaxis: { title: "wavelength (nm)", type: "log", gridcolor: css("--grid") }, yaxis: { title: "n", gridcolor: css("--grid") },
+    yaxis2: { title: "k", overlaying: "y", side: "right", type: "log", showgrid: false, exponentformat: "power" },
+    margin: { l: 56, r: 56, t: 34, b: 46 },
+  }), PCONF);
+  // step 2: linearised plot
+  const toW = (n) => n == null || n <= 1 ? null : 1 / (n * n - 1);
+  const E2 = P.nE.map((E) => E * E), W = P.nN.map(toW);
+  const fE2 = (P.fE || []).map((E) => E * E), fW = (P.fN || []).map(toW);
+  const t2 = [{ x: E2, y: W, mode: "markers", name: "all source points", marker: { size: 4, color: muted, opacity: 0.6 } }];
+  if (fE2.length) t2.push({ x: fE2, y: fW, mode: "markers", name: "kept for fit", marker: { size: 6, color: cU } });
+  if (P.E0 && P.Ed) {
+    const a = P.E0 / P.Ed, b = -1 / (P.E0 * P.Ed), xmax = Math.max(...fE2, 0.5) * 1.15;
+    t2.push({ x: [0, xmax], y: [a, a + b * xmax], mode: "lines", name: "fitted line", line: { color: css("--ink"), width: 1.6 } });
+    t2.push({ x: [0], y: [a], mode: "markers+text", name: "intercept (E = 0)", marker: { size: 10, color: css("--c-w71"), symbol: "x" },
+      text: [`a = ${a.toFixed(4)} → n∞ = ${Math.sqrt(1 + 1 / a).toFixed(4)}`], textposition: "top right", textfont: { size: 11 } });
+  }
+  const finite = fW.filter((v) => v != null);
+  const yr = finite.length ? [Math.min(...finite) * 0.9, Math.max(...finite, P.E0 && P.Ed ? P.E0 / P.Ed : 0) * 1.08] : undefined;
+  const xr = fE2.length ? [0, Math.max(...fE2) * 1.25] : undefined;
+  Plotly.react("pw" + k, t2, baseLayout({
+    title: { text: "Step 2: 1/(n²−1) vs E², straight-line fit", font: { size: 13 }, x: 0.02 },
+    xaxis: { title: "E² (eV²)", range: xr, gridcolor: css("--grid") }, yaxis: { title: "1/(n² − 1)", range: yr, gridcolor: css("--grid") },
+  }), PCONF);
+}
+
+function drawLine(d, wOf) {
+  const HC = 1239.84193, cU = css("--used"), cN = css("--c-sh02");
+  const lam = [], n = [];
+  for (let l = 400; l <= 2000; l += 20) { const w = wOf((HC / l) ** 2); if (w > 0) { lam.push(l); n.push(Math.sqrt(1 + 1 / w)); } }
+  Plotly.react("pn0", [{ x: lam, y: n, mode: "lines", name: "n(λ) rebuilt from the printed constants", line: { color: cN, width: 2 } },
+    { x: [2000], y: [d.n_inf], mode: "markers+text", name: "n∞", marker: { color: cU, size: 9 }, text: [`n∞ ${fmt(d.n_inf, 4)}`], textposition: "top left" }],
+    baseLayout({ title: { text: "n vs wavelength (rebuilt)", font: { size: 13 }, x: 0.02 }, xaxis: { title: "wavelength (nm)", gridcolor: css("--grid") }, yaxis: { title: "n", gridcolor: css("--grid") } }), PCONF);
+  const xmax = (HC / 400) ** 2, a = wOf(0);
+  Plotly.react("pw0", [{ x: [0, xmax], y: [a, wOf(xmax)], mode: "lines", name: "printed line", line: { color: cN, width: 2 } },
+    { x: [0], y: [a], mode: "markers+text", name: "intercept", marker: { size: 10, color: css("--c-w71"), symbol: "x" }, text: [`a = ${a.toFixed(4)} → n∞ = ${Math.sqrt(1 + 1 / a).toFixed(4)}`], textposition: "top right" }],
+    baseLayout({ title: { text: "1/(n²−1) vs E² (rebuilt)", font: { size: 13 }, x: 0.02 }, xaxis: { title: "E² (eV²)", gridcolor: css("--grid") }, yaxis: { title: "1/(n² − 1)", gridcolor: css("--grid") } }), PCONF);
+}
+
+// ---------------------------------------------------------------- start
+function start() {
+  $("lock").style.display = "none"; $("app").style.display = "block";
+  $("ver").textContent = `data ${DB.version} · built ${DB.built} · ${DB.counts.formulas} training formulas (+${DB.counts.removed} removed) · ${DB.counts.datasets} datasets`;
+  $("fdl").innerHTML = DB.formulas.map((F) => `<option value="${esc(F.f)}">`).join("");
+  const want = decodeURIComponent(location.hash.slice(1));
+  const go = () => openFormula(DB.formulas.some((F) => F.f === want) ? want : DB.formulas[0].f);
+  if (window.Plotly) go(); else $("plotlyjs").addEventListener("load", go);
+}
+function applyTheme(t) { if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); }
+applyTheme(ls.get("ninftheme"));
+$("theme").addEventListener("click", () => {
+  const dark = css("--bg") === "#131417"; const t = dark ? "light" : "dark"; applyTheme(t); ls.set("ninftheme", t); if (CUR) openFormula(CUR.f, SEL);
+});
+window.addEventListener("hashchange", () => { const f = decodeURIComponent(location.hash.slice(1)); if (DB && (!CUR || CUR.f !== f)) openFormula(f); });
+(async () => {
+  if (META && META.plain) { await unlock(""); start(); return; }
+  const pw = ss.get("ninfpw");
+  if (pw) { try { await unlock(pw); start(); } catch (e) {} }
+})();
+</script>
+</body>
+</html>
