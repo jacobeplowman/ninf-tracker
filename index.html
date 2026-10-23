@@ -151,7 +151,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 </div>
 
 <script>
-const META = {"salt": "1I9UW88WgHIsdW0XDMAdlA==", "iter": 310000};
+const META = {"salt": "hHoBfy1AKcTDRvhsfdoDUw==", "iter": 310000};
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const link = (url, text) => /^https?:\/\//.test(url || "") ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text || url)}</a>` : esc(text || "");
@@ -430,6 +430,19 @@ function renderDetail() {
       <tr><th>name (as printed)</th><th class="num">nx</th><th class="num">ny</th><th class="num">nz</th><th class="num">n_D x,y,z (589 nm)</th><th class="num">A</th><th class="num">B</th><th class="num">E₀</th><th class="num">E_d</th><th>method</th><th>error</th></tr>
       <tr><td>${esc(d.phase.replace(/^as printed: /, ""))}</td>${d.nx.map((v) => `<td class="num">${v == null ? "–" : v}</td>`).join("")}<td class="num">${d.nD.filter((v) => v != null).join(", ") || "–"}</td>
       <td class="num">${d.A ?? "–"}</td><td class="num">${d.B ?? "–"}</td><td class="num">${d.E0 ?? "–"}</td><td class="num">${d.Ed ?? "–"}</td><td>${esc(d.method)}</td><td>${esc(d.error)}</td></tr></table></div>`;
+    if (d.kind === "shannon" && d.evidence) {
+      const ck = d.formula_check || {};
+      const okc = /^ok|^checked/.test(ck.status || "");
+      html += `<h3>Proof from the paper: check it by eye</h3>
+        <div class="small muted">Cut from Shannon et al. 2002, Table 1, PDF page ${d.pdf_page}; column headers on top, the row we read highlighted in yellow.</div>
+        <div class="imgs"><img alt="Table 1 row" data-tok="${esc((DB.evi || {})[d.evidence] || "")}"></div>
+        <dl class="kv" style="margin-top:8px">
+          <dt>Formula we read</dt><dd><b>${esc(d.formula_read || "–")}</b>${d.formula_override ? ' <span class="chip mid">corrected by hand from the rendered page (see the note in shannon2002_formula_overrides.yml)</span>' : ""}</dd>
+          <dt>n∞ we take</dt><dd>${d.nx.filter((v) => v != null).length > 1 ? `mean of the printed n<sub>x</sub>, n<sub>y</sub>, n<sub>z</sub> = ${d.nx.filter((v) => v != null).join(", ")} → ` : "printed n∞ = "}<b>${fmt(d.n_inf, 4)}</b></dd>
+          <dt>E₀, E_d we take</dt><dd>${d.E0 == null ? "not printed" : `printed ⟨E₀⟩ = ${d.E0} eV, ⟨E_d⟩ = ${d.Ed} eV`}</dd>
+          <dt>Formula check</dt><dd>${ck.status ? `<span class="chip ${okc ? "ok" : "bad"}">${esc(ck.status)}</span>` : "–"}${ck.paper != null ? `<div class="muted small">anions (O, F, Cl …) in our formula: ${ck.ours}; from the paper's own V<sub>m</sub> / V<sub>o</sub>: ${ck.paper}. A misread formula changes the first number but not the second.</div>` : ""}</dd>
+        </dl>`;
+    }
   } else if (d.kind === "single") {
     html += `<div class="note small" style="margin-top:8px">${esc(d.how)}. n at 589 nm = ${fmt(d.n589, 4)}.</div>`;
   }
@@ -442,7 +455,7 @@ function renderDetail() {
   if (d.kind === "ours") d.pages.forEach((p, k) => DB.plots[p] && drawOurs(DB.plots[p], k));
   else if (d.kind === "shannon" && d.A != null && d.B != null) drawLine(d, (E2) => d.B - d.A * E2 / (1.23984193 ** 2));
   else if (d.kind === "wemple" && d.E0 != null && d.Ed != null) drawLine(d, (E2) => d.E0 / d.Ed - E2 / (d.E0 * d.Ed));
-  document.querySelectorAll("#imgs img[data-tok]").forEach(async (im) => {
+  document.querySelectorAll("#detail .imgs img[data-tok]").forEach(async (im) => {
     if (!im.dataset.tok) return;
     try { im.src = await imgURL(im.dataset.tok); }
     catch (e) { im.replaceWith(Object.assign(document.createElement("div"), { className: "note bad small", textContent: "This image could not be loaded; reload the page to try again." })); }
