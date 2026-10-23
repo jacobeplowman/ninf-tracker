@@ -151,7 +151,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 </div>
 
 <script>
-const META = {"salt": "mrMY3zqsl5sjYEwBUv5CzA==", "iter": 310000};
+const META = {"salt": "qmuiKRlibPF3A/H21dfVyw==", "iter": 310000};
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const link = (url, text) => /^https?:\/\//.test(url || "") ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text || url)}</a>` : esc(text || "");
@@ -209,12 +209,15 @@ function flags(F) {
   return { multi: fams.size > 1, spread };
 }
 // element-order-free key, so "BiNbO4" finds the table's "NbBiO4" (Materials Project / pymatgen element order)
-function fkey(f) { const m = String(f).match(/[A-Z][a-z]?\d*\.?\d*/g); return m && m.join("") === String(f).replace(/[()\s]/g, "") ? m.map((t) => t.replace(/^([A-Z][a-z]?)$/, "$11")).sort().join("") : ""; }
+function ftok(f) { const m = String(f).match(/[A-Z][a-z]?\d*\.?\d*/g); return m && m.join("") === String(f).replace(/[()\s]/g, "") ? m : null; }
+function fkey(f) { const m = ftok(f); return m ? m.map((t) => t.replace(/^([A-Z][a-z]?)$/, "$11")).sort().join("") : ""; }
+// partial query such as "BiNb" or "Nb2O6": every element the query names must be present (with that count, if a count is given)
+function fhas(f, q) { const a = ftok(f), b = ftok(q); if (!a || !b) return false; const cnt = {}; a.forEach((t) => { const e = t.match(/^[A-Z][a-z]?/)[0]; cnt[e] = t.slice(e.length) || "1"; }); return b.every((t) => { const e = t.match(/^[A-Z][a-z]?/)[0]; const n = t.slice(e.length); return e in cnt && (!n || cnt[e] === n); }); }
 function renderList() {
-  const q = $("q").value.trim().toLowerCase(), qk = fkey($("q").value.trim()), src = $("fsrc").value, fl = $("fflag").value, an = $("fanion").value, so = $("fsort").value;
+  const qraw = $("q").value.trim(), q = qraw.toLowerCase(), qk = fkey(qraw), src = $("fsrc").value, fl = $("fflag").value, an = $("fanion").value, so = $("fsort").value;
   const grp = (F) => F.anion + (F.oxo ? " · " + F.oxo : "");
   const rows = DB.formulas.filter((F) => {
-    if (q && !F.f.toLowerCase().includes(q) && !(qk && fkey(F.f) === qk)) return false;
+    if (q && !F.f.toLowerCase().includes(q) && !(qk && fkey(F.f) === qk) && !fhas(F.f, qraw)) return false;
     if (an && grp(F) !== an && F.anion !== an) return false;
     if (src && !F.source.startsWith(src)) return false;
     const g = flags(F);
