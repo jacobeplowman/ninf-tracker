@@ -10,7 +10,7 @@
 :root {
   --bg: #f7f7f5; --panel: #ffffff; --ink: #1d1f22; --muted: #5d6470; --line: #dfe1e5; --soft: #eef0f3;
   --accent: #2459c9; --used: #1f8a4c; --usedbg: #e7f5ec; --warn: #b4410f; --warnbg: #fdeee6; --amber: #8a6300; --amberbg: #fdf5dc;
-  --c-rii: #2f6fdb; --c-lit: #0f9488; --c-open: #7a4fd1; --c-sh02: #d9730d; --c-w71: #c62f3c; --c-w73: #c2408f; --c-sh17: #8b929c;
+  --c-rii: #2f6fdb; --c-lit: #0f9488; --c-open: #7a4fd1; --c-sh02: #d9730d; --c-w71: #c62f3c; --c-w73: #c2408f; --c-sh17: #8b929c; --c-ir: #b5651d;
   --grid: #e6e8ec;
   color-scheme: light;
 }
@@ -18,14 +18,14 @@
   :root:not([data-theme="light"]) {
     --bg: #131417; --panel: #1b1d21; --ink: #e8e9ec; --muted: #a0a6b1; --line: #30333a; --soft: #24272d;
     --accent: #7aa2ff; --used: #4cc47f; --usedbg: #173323; --warn: #ff8a5c; --warnbg: #3a1f15; --amber: #f0c45a; --amberbg: #362c10;
-    --c-rii: #6c9cff; --c-lit: #3cc4b6; --c-open: #a687f0; --c-sh02: #f29a45; --c-w71: #ff6b77; --c-w73: #ee77bd; --c-sh17: #9aa1ab;
+    --c-rii: #6c9cff; --c-lit: #3cc4b6; --c-open: #a687f0; --c-sh02: #f29a45; --c-w71: #ff6b77; --c-w73: #ee77bd; --c-sh17: #9aa1ab; --c-ir: #b5651d;
     --grid: #2b2e35; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #131417; --panel: #1b1d21; --ink: #e8e9ec; --muted: #a0a6b1; --line: #30333a; --soft: #24272d;
   --accent: #7aa2ff; --used: #4cc47f; --usedbg: #173323; --warn: #ff8a5c; --warnbg: #3a1f15; --amber: #f0c45a; --amberbg: #362c10;
-  --c-rii: #6c9cff; --c-lit: #3cc4b6; --c-open: #a687f0; --c-sh02: #f29a45; --c-w71: #ff6b77; --c-w73: #ee77bd; --c-sh17: #9aa1ab;
+  --c-rii: #6c9cff; --c-lit: #3cc4b6; --c-open: #a687f0; --c-sh02: #f29a45; --c-w71: #ff6b77; --c-w73: #ee77bd; --c-sh17: #9aa1ab; --c-ir: #b5651d;
   --grid: #2b2e35; color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -151,7 +151,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 </div>
 
 <script>
-const META = {"salt": "qmuiKRlibPF3A/H21dfVyw==", "iter": 310000};
+const META = {"salt": "KMAz6wFVL4XnWoAM/opAVA==", "iter": 310000};
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const link = (url, text) => /^https?:\/\//.test(url || "") ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text || url)}</a>` : esc(text || "");
@@ -161,7 +161,7 @@ const ss = { get(k) { try { return sessionStorage.getItem(k); } catch (e) { retu
 const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 let DB = null, KEY = null, CUR = null, SEL = 0;
 const FAM = { "refractiveindex.info": "--c-rii", "our literature search": "--c-lit", "open dataset": "--c-open", "Shannon 2002": "--c-sh02",
-  "Wemple 1971": "--c-w71", "Wemple 1973": "--c-w73", "Shannon 2017": "--c-sh17" };
+  "Wemple 1971": "--c-w71", "Wemple 1973": "--c-w73", "Shannon 2017": "--c-sh17", "infrared ε∞ (check)": "--c-ir" };
 const FORM = { bulk: ["circle", "bulk"], thin_film: ["diamond", "thin film"], glass: ["square", "glass"], amorphous: ["square", "amorphous"],
   bulk_or_unspecified: ["triangle-up", "not stated"] };
 const formName = (f) => (FORM[f] || [null, f || "not stated"])[1];
@@ -450,6 +450,18 @@ function renderDetail() {
     }
   } else if (d.kind === "single") {
     html += `<div class="note small" style="margin-top:8px">${esc(d.how)}. n at 589 nm = ${fmt(d.n589, 4)}.</div>`;
+  } else if (d.kind === "ircheck") {
+    html += `<h3>Infrared check: is √ε∞ from a phonon fit the same as our n∞?</h3>
+      <div class="note small">${esc(d.how)}</div>
+      <dl class="kv" style="margin-top:8px">
+        <dt>ε∞ as published</dt><dd><b>${esc(d.eps_text)}</b> → √ε∞ = <b>${fmt(d.n_inf, 4)}</b></dd>
+        <dt>Our training n∞</dt><dd><b>${fmt(d.n_ours, 4)}</b> (${esc(d.ours_source)})</dd>
+        <dt>Difference</dt><dd><span class="chip ${Math.abs(d.diff_pct) <= 2 ? "ok" : "bad"}">ours − infrared = ${d.diff_pct > 0 ? "+" : ""}${fmt(d.diff_pct, 2)} %</span>${d.use === "outlier" ? ` <span class="chip bad">not counted</span>` : ""}</dd>
+        <dt>Where it is printed</dt><dd>${esc(d.ref)}</dd>
+        <dt>Sample</dt><dd>${esc(d.sample)}</dd>
+        ${d.why ? `<dt>Why not counted</dt><dd>${esc(d.why)}</dd>` : ""}
+        <dt>Result over all checks</dt><dd>${esc(d.summary)}</dd>
+      </dl>`;
   }
   html += `<div style="margin-top:12px"><button class="btn ghost" id="copynote" type="button">Copy a note about this dataset</button> <span class="small muted" id="copied"></span></div>`;
   $("detail").innerHTML = html;
