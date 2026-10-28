@@ -151,7 +151,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 </div>
 
 <script>
-const META = {"salt": "r9xgZhRjXAvwunrIJh1iTw==", "iter": 310000};
+const META = {"salt": "wmLX2h7ZOk9zeJ8NbKuv4A==", "iter": 310000};
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const link = (url, text) => /^https?:\/\//.test(url || "") ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text || url)}</a>` : esc(text || "");
@@ -161,7 +161,7 @@ const ss = { get(k) { try { return sessionStorage.getItem(k); } catch (e) { retu
 const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 let DB = null, KEY = null, CUR = null, SEL = 0;
 const FAM = { "refractiveindex.info": "--c-rii", "our literature search": "--c-lit", "open dataset": "--c-open", "Shannon 2002": "--c-sh02",
-  "Wemple 1971": "--c-w71", "Wemple 1973": "--c-w73", "Shannon 2017": "--c-sh17", "infrared ε∞ (check)": "--c-ir", "infrared ε∞": "--c-ir" };
+  "Wemple 1971": "--c-w71", "Wemple 1973": "--c-w73", "Shannon 2017": "--c-sh17", "infrared ε∞ (check)": "--c-ir", "infrared ε∞": "--c-ir", "authors' printed n∞ (check)": "--c-ir" };
 const FORM = { bulk: ["circle", "bulk"], thin_film: ["diamond", "thin film"], glass: ["square", "glass"], amorphous: ["square", "amorphous"],
   bulk_or_unspecified: ["triangle-up", "not stated"] };
 const formName = (f) => (FORM[f] || [null, f || "not stated"])[1];
@@ -461,6 +461,18 @@ function renderDetail() {
         <dt>Sample</dt><dd>${esc(d.sample)}</dd>
         ${d.why ? `<dt>Why not counted</dt><dd>${esc(d.why)}</dd>` : ""}
         <dt>Result over all checks</dt><dd>${esc(d.summary)}</dd>
+      </dl>`;
+  }
+  if (d.kind === "reported") {
+    const bad = /^DISAGREE/.test(d.flag || "");
+    html += `<h3>Authors' printed n∞ vs our fit of the same data</h3>
+      <div class="note small">${esc(d.how)}</div>
+      <dl class="kv" style="margin-top:8px">
+        <dt>Printed by the authors</dt><dd><b>${fmt(d.n_inf, 4)}</b></dd>
+        <dt>Our fit, same dataset</dt><dd><b>${d.n_ours == null ? "–" : fmt(d.n_ours, 4)}</b></dd>
+        <dt>Flag</dt><dd><span class="chip ${bad ? "bad" : (d.flag === "agree" ? "ok" : "mid")}">${esc(d.flag)}</span>${d.diff_pct == null ? "" : ` printed − ours = ${d.diff_pct > 0 ? "+" : ""}${fmt(d.diff_pct, 2)} %`}</dd>
+        <dt>Dataset</dt><dd>${esc(d.ref)}</dd>
+        ${d.note ? `<dt>Note</dt><dd>${esc(d.note)}</dd>` : ""}
       </dl>`;
   }
   html += `<div style="margin-top:12px"><button class="btn ghost" id="copynote" type="button">Copy a note about this dataset</button> <span class="small muted" id="copied"></span></div>`;
