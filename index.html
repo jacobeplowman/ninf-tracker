@@ -151,7 +151,7 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 </div>
 
 <script>
-const META = {"salt": "KMAz6wFVL4XnWoAM/opAVA==", "iter": 310000};
+const META = {"salt": "MAWErE0SX9LJTO1S9fdXKA==", "iter": 310000};
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const link = (url, text) => /^https?:\/\//.test(url || "") ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text || url)}</a>` : esc(text || "");
@@ -161,7 +161,7 @@ const ss = { get(k) { try { return sessionStorage.getItem(k); } catch (e) { retu
 const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 let DB = null, KEY = null, CUR = null, SEL = 0;
 const FAM = { "refractiveindex.info": "--c-rii", "our literature search": "--c-lit", "open dataset": "--c-open", "Shannon 2002": "--c-sh02",
-  "Wemple 1971": "--c-w71", "Wemple 1973": "--c-w73", "Shannon 2017": "--c-sh17", "infrared ε∞ (check)": "--c-ir" };
+  "Wemple 1971": "--c-w71", "Wemple 1973": "--c-w73", "Shannon 2017": "--c-sh17", "infrared ε∞ (check)": "--c-ir", "infrared ε∞": "--c-ir" };
 const FORM = { bulk: ["circle", "bulk"], thin_film: ["diamond", "thin film"], glass: ["square", "glass"], amorphous: ["square", "amorphous"],
   bulk_or_unspecified: ["triangle-up", "not stated"] };
 const formName = (f) => (FORM[f] || [null, f || "not stated"])[1];
