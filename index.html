@@ -145,13 +145,14 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
       </select>
       <div class="small muted" id="fcount"></div>
       <div id="flist" role="listbox" aria-label="Formulas"></div>
+      <details id="unplaced" class="small"><summary>Papers read, no single formula</summary><div id="unplacedlist"></div></details>
     </aside>
     <main id="main"></main>
   </div>
 </div>
 
 <script>
-const META = {"salt": "HRKSxd1fuT0+5iS5KQvFKA==", "iter": 310000};
+const META = {"salt": "ABm7H1ctoEI6zYjvakbR3A==", "iter": 310000};
 const $ = (id) => document.getElementById(id);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const link = (url, text) => /^https?:\/\//.test(url || "") ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(text || url)}</a>` : esc(text || "");
@@ -555,6 +556,8 @@ function start() {
   $("lock").style.display = "none"; $("app").style.display = "block";
   $("ver").textContent = `data ${DB.version} · built ${DB.built} · ${DB.counts.formulas} training formulas (+${DB.counts.removed} removed) · ${DB.counts.datasets} datasets`;
   $("fdl").innerHTML = DB.formulas.map((F) => `<option value="${esc(F.f)}">`).join("");
+  // 30 Oct 2026: papers read and set aside whose compounds are no single formula (a family, a non-stoichiometric film, a rule)
+  $("unplacedlist").innerHTML = (DB.unplaced || []).map((u) => `<p><b>${esc(u.label)}</b>: ${esc(u.compounds)}<br>${esc(u.ref)}${u.doi ? ` (<a href="${esc(u.doi)}" target="_blank" rel="noopener">DOI</a>)` : ""}<br>${esc(u.notused)}</p>`).join("") || "none";
   const cnt = {}; DB.formulas.forEach((F) => { cnt[F.anion] = (cnt[F.anion] || 0) + 1; if (F.oxo) { const k = F.anion + " · " + F.oxo; cnt[k] = (cnt[k] || 0) + 1; } });
   $("fanion").innerHTML = '<option value="">All anion classes</option>' + Object.keys(cnt).sort((a, b) => a.split(" · ")[0] === b.split(" · ")[0] ? a.localeCompare(b) : (cnt[b.split(" · ")[0]] - cnt[a.split(" · ")[0]]))
     .map((k) => `<option value="${esc(k)}">${k.includes(" · ") ? "&nbsp;&nbsp;– " + esc(k.split(" · ")[1]) : esc(k)} (${cnt[k]})</option>`).join("");
